@@ -23,7 +23,7 @@
 
 #define N_AXES		3
 
-#define T_DWELL		10.0
+#define T_DWELL		5.0
 
 struct AccelDataStruct
 {

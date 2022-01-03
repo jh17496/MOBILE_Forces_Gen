@@ -34,7 +34,12 @@ void loadFromDataFile(AccelData *accelData)
 
 		rc *= fread(tempArray,sizeof_double,accelData->nPoints*N_AXES,fp);
 
-		runStartIndex = (int )(T_DWELL / dt);
+
+		if (0)
+			runStartIndex = (int )(T_DWELL / dt);
+		else
+			runStartIndex = triggerIndex;
+
 		accelData->nPoints -= runStartIndex;
 		triggerIndex -= runStartIndex;
 
@@ -43,12 +48,33 @@ void loadFromDataFile(AccelData *accelData)
 		if (rc == 0)
 			printf("Read error\n");
 
+		double xOffset=0.0, yOffset=0.0, zOffset=0.0;
+		int count = 0;
+
+		if (0)
+		{
+			for (int ii=0; ii<runStartIndex; ++ii)
+			{
+				if (ii>runStartIndex/10 && ii<(9*runStartIndex)/10)
+				{
+					xOffset += tempArray[N_AXES*ii];
+					yOffset += tempArray[N_AXES*ii + 1];
+					zOffset += tempArray[N_AXES*ii + 2];
+					count++;
+				}
+			}
+
+			xOffset /= (double )count;
+			yOffset /= (double )count;
+			zOffset /= (double )count;
+		}
+
 		for (int ii=0; ii<accelData->nPoints; ++ii)
 		{
 			accelData->t[ii] = ii*dt;
-			accelData->x[ii] = tempArray[runStartIndex*N_AXES + N_AXES*ii];
-			accelData->y[ii] = tempArray[runStartIndex*N_AXES + N_AXES*ii + 1];
-			accelData->z[ii] = tempArray[runStartIndex*N_AXES + N_AXES*ii + 2];
+			accelData->x[ii] = xOffset - tempArray[runStartIndex*N_AXES + N_AXES*ii];
+			accelData->y[ii] = yOffset - tempArray[runStartIndex*N_AXES + N_AXES*ii + 1];
+			accelData->z[ii] = zOffset - tempArray[runStartIndex*N_AXES + N_AXES*ii + 2] + GRAVITY;
 		}
 
 		free(tempArray);
@@ -60,19 +86,26 @@ void loadFromDataFile(AccelData *accelData)
 void generateFromScratch(AccelData *accelData)
 {
 	double dt = 0.001;
-	double period, amplitude, nPeriod;
+	double period, amplitude, nPeriod, sum = 0.0;
 
-	period = 0.336519;
+	period = 0.65;
 	amplitude = 7.5;
 	nPeriod = 10;
 	addSinusoidalRigAcceleration(accelData, dt, period, amplitude, nPeriod);
+	sum += period*nPeriod;
 
-	period = 0.5;
+	period = 1.42;
 	amplitude = 7.5;
 	addConstantRigAcceleration(accelData, dt, period, amplitude);
+	sum += period;
 
-	period = 1;
+	period = 0.85;
 	amplitude = -29.4;
+	addConstantRigAcceleration(accelData, dt, period, amplitude);
+	sum += period;
+
+	period = 10.0 - sum;
+	amplitude = 19.6;
 	addConstantRigAcceleration(accelData, dt, period, amplitude);
 
 	writeOutForcesFile(accelData);
